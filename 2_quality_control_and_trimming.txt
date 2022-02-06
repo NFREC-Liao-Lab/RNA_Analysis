@@ -9,8 +9,8 @@ conda install fastqc multiqc trim_galore
 
 ######################################################################
 #2. quality conntrol
-rawdata_dir= #the directory have the rawdata
-rawdata_fastqc_out_dir=    #setup the output directory
+rawdata_dir=/home/microbiome/data_storage/SATA2/RNA_data/RNA_test/rawdata #the directory have the rawdata
+rawdata_fastqc_out_dir=/home/microbiome/data_storage/SATA2/RNA_data/RNA_test/rawdata_fastqc   #setup the output directory
 
 for i in $rawdata_dir/*.gz ; do
     basename=$(basename "$i" .gz)
@@ -25,12 +25,12 @@ multiqc *.zip
 
 ########################################################################
 #3. trimming by using trim_galore
-clean_data_dir=    #setup clean data directory
+clean_data_dir=/home/microbiome/data_storage/SATA2/RNA_data/RNA_test/cleandata    #setup clean data directory
 
-for i in $rawdata_dir/*_R1_001.fastq.gz ; do
-   basename=$(basename "$i" _R1_001.fastq.gz)
+for i in $rawdata_dir/*_R2_001.fastq.gz ; do
+   basename=$(basename "$i" _R2_001.fastq.gz)
    trim_galore -q 25 --phred33 --stringency 3 --length 100 \
-               --paired ${basename}_R1_001.fastq.gz    ${basename}_R2_001.fastq.gz \
+               --paired $rawdata_dir/${basename}_R1_001.fastq.gz    $rawdata_dir/${basename}_R2_001.fastq.gz \
                --gzip \
                --cores 10 \
                -o $clean_data_dir
