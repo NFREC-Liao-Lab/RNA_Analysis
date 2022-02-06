@@ -1,0 +1,12 @@
+########################################################
+#md5 check
+#This is code for test the dataset completeness
+########################################################
+
+#1. load work environment and install the package
+conda activate RNASeq
+conda install perl-digest-md5
+
+#2. check
+mkd5 *.gz > md5.txt
+md5sum -c md5.txt

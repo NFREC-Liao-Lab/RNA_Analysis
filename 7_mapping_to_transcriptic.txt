@@ -1,0 +1,6 @@
+
+
+
+samtools sort -n -@ 4 -o $dir/4_alignment_pinus/${id}.temp/${id}_pinus.sort.bam $dir/4_alignment_pinus/2_bam_file/${id}_pinus.bam
+express -o $dir/4_alignment_pinus/3_pinus_count_express $Pintaeda_transcript $dir/4_alignment_pinus/${id}.temp/${id}_pinus.sort.bam
+

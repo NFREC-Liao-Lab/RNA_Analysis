@@ -1,0 +1,51 @@
+
+#####################################################################################################
+#de novo assemble (trinity)
+#####################################################################################################
+http://www.chenlianfu.com/?p=2026
+[https://github.com/trinityrnaseq/trinityrnaseq/wiki](https://links.jianshu.com/go?to=https%3A%2F%2Fgithub.com%2Ftrinityrnaseq%2Ftrinityrnaseq%2Fwiki)
+https://www.jianshu.com/p/9e3f3c7bc575
+https://www.jianshu.com/p/5e9b121b22fa
+
+Tools for building de novo transcriptome assembly:
+install trinity after install <bowtie2，rsem, salmon, samtools=1.9>
+
+
+#1. use trinity package for de novo assembly
+Trinity --CPU 8 --seqType fq --max_memory 60G \
+        --left **_R1.fastq.gz \
+        --right **_R2.fastq.gz \
+        --output trinity_output
+        
+    
+Trinity --CPU 8 --seqType fq --max_memory 60G \
+        --samplies_file file_list \
+        --output trinity_output
+
+
+    # you will get the assemble result in <trinity_output>
+
+#2. evaluate the assemble result
+TrinityStats.pl Trinity.fasta > trinity_assembly_stats.txt
+
+#3. evaluate the completeness of the assembled transcripts 
+    #use the package BUSCO
+    #https://www.jianshu.com/p/5041460f7a5d
+    #https://busco.ezlab.org/busco_userguide.html
+run_BUSCO.py \
+-i Trinity.fasta \
+-m tran -c 24 \
+-o busco \
+--auto-lineage-euk
+
+#4. remove the Redundant Sequence
+#(A) Set the longest transcript of each gene as the unigene (prefer)
+/home/sunny/tools/trinityrnaseq/util/misc/get_longest_isoform_seq_per_trinity_gene.pl Trinity.fasta > trinity_unigene.fasta
+#(B) cd-hit remove the Redundant Sequence
+#conda install -c bioconda cd-hit
+cd-hit-est -i Trinity.fasta -o Trinity.cdhit_unigene.fa -c 0.95 -n 9 -M 1500 -T 12
+cd-hit-est -i bacteria.fna -o bacteria.cdhit_unigene.fa -c 0.95 -n 9 -M 1500 -T 12
+
+#5. the distribution of the sequence length
+perl fasta_seq_length.pl Trinity.fasta > trinity_out_dir/length.txt
+

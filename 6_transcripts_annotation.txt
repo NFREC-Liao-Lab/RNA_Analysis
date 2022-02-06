@@ -1,0 +1,187 @@
+
+################################
+#for transcript annotation in RNASeq analysis with standard pipeline
+##################################
+# 1 database download
+wget https://data.broadinstitute.org/Trinity/Trinotate_v3_RESOURCES/Trinotate_v3_RESOURCES/Pfam-A.hmm.gz
+wget https://data.broadinstitute.org/Trinity/Trinotate_v3_RESOURCES/Trinotate_v3_RESOURCES/uniprot_sprot.pep.gz
+
+Trinotate.sqlite
+gunzip uniprot_sprot.pep.gz
+gunzip Pfam-A.hmm.gz
+makeblastdb -in uniprot_sprot.pep -dbtype prot
+hmmpress Pfam-A.hmm
+
+# other custom database
+makeblastdb
+
+#2. get longest ORF
+https://github.com/TransDecoder/TransDecoder/wiki
+http://xuzhougeng.top/archives/Find-ORF-in-transcripts-using-TransDecoder
+https://www.jianshu.com/p/679243047380
+https://www.bioinfo-scrounger.com/archives/106/
+
+#module load transdecoder
+TransDecoder.LongOrfs  -t trinity_unigene.fasta
+# you will need `longest_orfs.pep` for next steps
+
+# predict the likely coding regions
+TransDecoder.Predict -t trinity_unigene.fasta
+
+
+
+#3. Running sequence analysis
+#Files needed for execution
+Trinity.fasta
+Trinity.fasta.transdecoder.pep
+
+blastx -query Trinity.fasta \
+  -db uniprot_sprot.pep \
+  -num_threads 1 \
+  -max_target_seqs 1 \
+  -outfmt 6 \
+  -evalue 1e-3 > blastx.outfmt6 
+  
+  
+blastp -query longest_orfs.pep \
+  -db uniprot_sprot.pep \
+  -num_threads 1 \
+  -max_target_seqs 1 \
+  -outfmt 6 
+  -evalue 1e-3 > blastp.outfmt6 
+  
+  
+hmmscan --cpu 1 \
+  --domtblout TrinotatePFAM.out \
+  /Volumes/SSD2/ref_annotation/database/Pfam-A.hmm longest_orfs.pep > pfam.log &
+  
+  
+  
+ /Volumes/SSD2/ref_annotation/annotation_tools/TMHMM2.0c/bin/tmhmm  --short < longest_orfs.pep > tmhmm.out
+  
+signalp -f short  -n signalp.out longest_orfs.pep
+  
+tmhmm --short < longest_orfs.pep > tmhmm.out
+
+RnammerTranscriptome.pl --transcriptome Trinity.fasta   --path_to_rnammer /usr/bin/software/rnammer_v1.2/rnammer
+  
+
+##custom database
+blastx -query Trinity.fasta \
+  -db custome_database \
+  -num_threads 1 \
+  -max_target_seqs 1 \
+  -outfmt 6 \
+  -evalue 1e-3 > other_database.outfmt6 
+
+blastp -query longest_orfs.pep \
+  -db custome_database \
+  -num_threads 1 \
+  -max_target_seqs 1 \
+  -outfmt 6 
+  -evalue 1e-3 > other_database.outfmt6 
+
+
+  
+4. Loading results
+Trinotate SQLite Database was updated with the new predictions:
+
+wget "https://data.broadinstitute.org/Trinity/Trinotate_v3_RESOURCES/Trinotate_v3_RESOURCES/Trinotate_v3.sqlite.gz" -O Trinotate.sqlite.gz
+
+gunzip Trinotate.sqlite.gz
+
+
+/Users/liaolab/xraylarch/envs/RNAseq/bin/util/support_scripts/get_Trinity_gene_to_trans_map.pl \
+     TrPtA_269336_P_taeda_mRNAdatabase_328662_2.fasta >  TrPtA.fasta.gene_trans_map
+
+Trinotate /Volumes/SSD2/ref_annotation/database/Trinotate.sqlite init \
+  --gene_trans_map TrPtA.fasta.gene_trans_map \
+  --transcript_fasta TrPtA_269336_P_taeda_mRNAdatabase_328662.fasta \
+  --transdecoder_pep longest_orfs.pep
+  
+Trinotate /Volumes/SSD2/ref_annotation/database/Trinotate.sqlite LOAD_swissprot_blastp blastp.outfmt6
+Trinotate /Volumes/SSD2/ref_annotation/database/Trinotate.sqlite LOAD_swissprot_blastx blastx.outfmt6
+Trinotate /Volumes/SSD2/ref_annotation/database/Trinotate.sqlite LOAD_pfam TrinotatePFAM.out
+Trinotate /Volumes/SSD2/ref_annotation/database/Trinotate.sqlite LOAD_tmhmm tmhmm.out
+Trinotate /Volumes/SSD2/ref_annotation/database/Trinotate.sqlite LOAD_signalp signalp.out
+
+#Optional: load custom database blast hits:
+Trinotate Trinotate.sqlite LOAD_custom_blast --outfmt6 custom_db.blastp.outfmt6 --prog blastp --dbtype custom_db_name
+Trinotate Trinotate.sqlite LOAD_custom_blast --outfmt6 custom_db.blastx.outfmt6 --prog blastx --dbtype custom_db_name
+
+
+5.
+and finally, report was generated as follows:
+
+Report:
+Trinotate /Volumes/SSD2/ref_annotation/database/Trinotate.sqlite report > trinotate_annotation_report.xls
+
+
+
+################################
+#for transcript annotation in RNASeq analysis with eggnog-mapper
+##################################
+#eggnog-mapper
+http://eggnog-mapper.embl.de/
+https://github.com/eggnogdb/eggnog-mapper/wiki/eggNOG-mapper-v2.1.2-to-v2.1.4
+
+#1. setup the package
+conda install -c bioconda eggnog-mapper
+
+#2. setup the database
+export EGGNOG_DATA_DIR=/home/microbiome/data_storage/SATA2/tool_database/eggnog_db
+download_eggnog_data.py 
+
+#3. run the annotation
+emapper.py -i longest_orfs.pep  \
+           --output eggNOG_annotation_result \
+           #-m diamond \
+           -d euk \
+           --cpu 1 \
+           #--itype CDS \
+           #--translate   \
+           --sensmode sensitive \
+           --override --report_orthologs
+
+emapper.py -i longest_orfs.pep  \
+           --output eggNOG_annotation_result \
+           --itype proteins \
+           -d euk \
+           --cpu 24 \
+           --sensmode ultra-sensitive \
+           --override
+
+################################
+#for transcript annotation in RNASeq analysis with interproscan
+##################################
+https://interproscan-docs.readthedocs.io/en/latest/HowToRun.html
+
+#1. setup the package
+mkdir my_interproscan
+cd my_interproscan
+wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.52-86.0/interproscan-5.52-86.0-64-bit.tar.gz
+wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.52-86.0/interproscan-5.52-86.0-64-bit.tar.gz.md5
+
+# Recommended checksum to confirm the download was successful:
+md5sum -c interproscan-5.52-86.0-64-bit.tar.gz.md5
+# Must return *interproscan-5.52-86.0-64-bit.tar.gz: OK*
+# If not - try downloading the file again as it may be a corrupted copy.
+
+tar -pxvzf interproscan-5.52-86.0-*-bit.tar.gz
+
+python3 initial_setup.py
+
+
+2. running the annotation
+
+/home/sunny/interproscan/interproscan/interproscan.sh -i longest_orfs.pep -f tsv \
+                  --pathways  \
+                  --iprlookup \
+                  --goterms  \
+                  --outfile  interproscan_result.annotation \
+                  -dp \
+                  --cpu 24 \
+                  --seqtype p 
+
+
+
