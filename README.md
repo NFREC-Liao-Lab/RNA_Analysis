@@ -3,6 +3,7 @@ RNA Analysis code
 
 1.most used linux commands
 https://kinsta.com/blog/linux-commands/
+https://github.com/HaihuaWang-hub/CSBook
 
 
 
