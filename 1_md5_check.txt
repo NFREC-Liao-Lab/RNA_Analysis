@@ -8,5 +8,5 @@ conda activate RNASeq
 conda install perl-digest-md5
 
 #2. check
-mkd5 *.gz > md5.txt
+md5sum *.gz > md5.txt
 md5sum -c md5.txt
